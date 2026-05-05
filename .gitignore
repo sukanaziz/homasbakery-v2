@@ -20,3 +20,6 @@ build/
 # Editor folders
 .vscode/
 .idea/
+
+# Prisma generated client
+**/src/generated/
