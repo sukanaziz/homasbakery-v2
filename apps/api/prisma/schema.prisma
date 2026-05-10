@@ -1,3 +1,16 @@
+// Homas Bakery database schema.
+//
+// Prisma reads this file to generate the database client (apps/api/node_modules/@prisma/client)
+// and to create migrations (apps/api/prisma/migrations/). Every change to a
+// model or enum here results in a new migration on the next `prisma migrate dev`.
+//
+// Models in this file:
+//   Product    — a menu item (name, price, photo, availability)
+//   Order      — a customer-submitted order request (header / customer info)
+//   OrderItem  — one line item on an order (quantity of one product)
+//   Admin      — bakery staff who can log into the admin dashboard
+// Plus two enums for fixed status values on Order.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,25 +20,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// A menu item the bakery sells. The customer site shows only rows where
+// `available` is true; the admin panel shows everything.
 model Product {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  priceCents  Int
-  imageUrl    String?
-  available   Boolean     @default(true)
-  orderItems  OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String      @id @default(cuid())
+  name         String
+  description  String?
+  // Price stored in cents to avoid floating-point rounding bugs. The
+  // frontend converts dollars to cents before saving, and back when displaying.
+  priceCents   Int
+  imageUrl     String?
+  available    Boolean     @default(true)
+  // Admin-controlled order. Lower = earlier in the menu. New products get
+  // (max + 1) so they land at the bottom by default.
+  displayOrder Int         @default(0)
+  // Reverse relation: every OrderItem points back here via productId.
+  orderItems   OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([displayOrder])
 }
 
+// A customer-submitted order request. "Request" because no money changes
+// hands here — the bakery owner reviews each one and follows up to confirm
+// pricing, then collects a 50% prepayment by phone or email.
 model Order {
   id              String          @id @default(cuid())
   customerName    String
   customerEmail   String
   customerPhone   String
   fulfillmentType FulfillmentType @default(PICKUP)
+  // Only populated when fulfillmentType is DELIVERY.
   deliveryAddress String?
+  // When the customer wants the order ready by. Stored as full datetime
+  // (the frontend uses a datetime-local picker).
   requestedDate   DateTime
   notes           String?
   status          OrderStatus     @default(NEW)
@@ -33,16 +62,23 @@ model Order {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
+  // Index the columns the admin dashboard most commonly filters/sorts by.
   @@index([status])
   @@index([createdAt])
 }
 
+// One line item on an order: a quantity of a specific product.
 model OrderItem {
   id         String   @id @default(cuid())
   orderId    String
   productId  String
   quantity   Int
+  // The product's price at the moment the order was placed. Snapshotting
+  // means a price change next week doesn't retroactively rewrite history.
   priceCents Int
+  // If an Order is deleted, its OrderItems go with it (cascade).
+  // If a Product is deleted, the FK constraint blocks the delete unless
+  // there are no related items — protecting order history.
   order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product    Product  @relation(fields: [productId], references: [id])
   createdAt  DateTime @default(now())
@@ -51,14 +87,29 @@ model OrderItem {
   @@index([productId])
 }
 
+// Fixed lifecycle states for an order. Allowed transitions are enforced
+// in the API (see VALID_STATUS_TRANSITIONS in src/index.ts), not the DB —
+// Postgres just makes sure the value is one of these four.
 enum OrderStatus {
-  NEW
-  CONFIRMED
-  COMPLETED
-  CANCELLED
+  NEW         // freshly submitted, awaiting bakery review
+  CONFIRMED   // bakery contacted the customer and locked it in
+  COMPLETED   // customer picked it up / received delivery
+  CANCELLED   // either side called it off
 }
 
 enum FulfillmentType {
   PICKUP
   DELIVERY
+}
+
+// Bakery staff who can log into /admin. Created by the seed script
+// (prisma/seed.ts) using values from .env.
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  // bcrypt hash, never the raw password.
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

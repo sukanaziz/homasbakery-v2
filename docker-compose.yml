@@ -1,17 +1,36 @@
+# Local infrastructure for development.
+#
+# Spins up Postgres (the main database) and Redis (sessions + rate limit
+# storage) in containers so the dev setup is "clone the repo and `docker
+# compose up -d`". No need to install Postgres or Redis directly on your Mac.
+#
+# Data persists across `docker compose down` because we mount named volumes.
+# To wipe everything and start fresh: `docker compose down -v`.
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: homas-postgres
     restart: unless-stopped
     ports:
+      # Forward the container's 5432 to localhost:5432 so the API on the
+      # host machine can connect via DATABASE_URL.
       - "5432:5432"
     environment:
+      # Used by the official Postgres image to bootstrap the database on
+      # first run. These match what's in apps/api/.env. Never use these
+      # values in production — they only ever live on the dev machine.
       POSTGRES_USER: homas
       POSTGRES_PASSWORD: homas_dev_password
       POSTGRES_DB: homasbakery
     volumes:
+      # Persist database files outside the container so data survives
+      # restarts and image updates.
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
+      # Docker uses this to know whether Postgres is *actually* ready,
+      # not just running. Without it, the API might try to connect before
+      # Postgres has finished initializing on the very first run.
       test: ["CMD-SHELL", "pg_isready -U homas -d homasbakery"]
       interval: 5s
       timeout: 5s
@@ -31,6 +50,7 @@ services:
       timeout: 5s
       retries: 5
 
+# Named volumes — Docker manages where these actually live on disk.
 volumes:
   postgres_data:
   redis_data:

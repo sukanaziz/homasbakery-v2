@@ -23,3 +23,7 @@ build/
 
 # Prisma generated client
 **/src/generated/
+
+# Uploaded images (don't commit user uploads — keep folder structure via .gitkeep)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep

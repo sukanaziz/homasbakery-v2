@@ -1,1 +1,35 @@
+/* Global styles for the frontend.
+ *
+ * Two custom fonts from Google Fonts: Fraunces (a warm modern serif we
+ * use for every heading) and Inter (a clean sans-serif used for body
+ * text). The display=swap rule tells browsers to render fallback text
+ * immediately and swap in the real font once it loads — avoids the
+ * blank "FOIT" flash on slow connections.
+ *
+ * Tailwind v4 uses @theme tokens to define design variables. The
+ * --font-display and --font-sans tokens here become the "font-display"
+ * and "font-sans" Tailwind utility classes, available anywhere in JSX. */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* App-wide defaults: Inter on every element, Fraunces on every heading. */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    /* Slight negative tracking on display text — looks more refined at
+       large sizes, matches what most modern brand sites do. */
+    letter-spacing: -0.02em;
+  }
+}
