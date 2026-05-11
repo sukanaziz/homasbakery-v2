@@ -14,8 +14,9 @@
 // it'd be worth breaking up.
 // ---------------------------------------------------------------------------
 
-// Sentry must be imported FIRST — see ./instrument.ts for why.
-import './instrument';
+// Sentry is preloaded via Node's --import flag (see apps/api/package.json
+// scripts) so it can hook into the runtime before any other module loads.
+// We import the Sentry SDK here only for the express error handler below.
 import * as Sentry from '@sentry/node';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
