@@ -1,5 +1,7 @@
 # Homas Bakery
 
+[![CI](https://github.com/sukanaziz/homasbakery-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/sukanaziz/homasbakery-v2/actions/workflows/ci.yml)
+
 Production e-commerce + admin tool for a small, family-run Afghan bakery in
 Hayward, California. Customers browse the menu, place pickup or delivery
 order requests, and receive a confirmation email. The bakery owner manages

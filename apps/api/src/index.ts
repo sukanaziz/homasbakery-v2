@@ -19,6 +19,15 @@
 // We import the Sentry SDK here only for the express error handler below.
 import * as Sentry from '@sentry/node';
 import express, { type Request, type Response, type NextFunction } from 'express';
+import { canTransition } from './lib/orderStatus';
+import {
+  loginSchema,
+  createProductSchema,
+  updateProductSchema,
+  createOrderSchema,
+  updateOrderStatusSchema,
+  moveProductSchema,
+} from './lib/schemas';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -235,64 +244,10 @@ const upload = multer({
   },
 });
 
-// ---------------------------------------------------------------------------
-// Input validation schemas
-// ---------------------------------------------------------------------------
-//
-// Every route that accepts a request body validates it against one of these
-// before touching the database. Bad input is rejected with a 400 plus a
-// list of issues, so we never write malformed data.
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-
-const createProductSchema = z.object({
-  name: z.string().min(1).max(200),
-  description: z.string().max(2000).optional().nullable(),
-  // Price is in cents — using integers avoids floating-point rounding
-  // bugs that eat pennies. The frontend converts dollars to cents before
-  // sending, and divides by 100 when displaying.
-  priceCents: z.number().int().nonnegative().max(1_000_000),
-  imageUrl: z.string().max(500).optional().nullable(),
-  available: z.boolean().optional(),
-});
-
-// All product fields are optional on update — admins might just toggle
-// `available` or change a price.
-const updateProductSchema = createProductSchema.partial();
-
-const createOrderSchema = z
-  .object({
-    customerName: z.string().min(1).max(200),
-    customerEmail: z.string().email().max(200),
-    customerPhone: z.string().min(7).max(50),
-    fulfillmentType: z.enum(['PICKUP', 'DELIVERY']),
-    deliveryAddress: z.string().max(500).optional(),
-    requestedDate: z.string().datetime(),
-    notes: z.string().max(2000).optional(),
-    items: z
-      .array(
-        z.object({
-          productId: z.string().min(1),
-          quantity: z.number().int().positive().max(1000),
-        })
-      )
-      .min(1),
-  })
-  // Conditional rule: deliveryAddress is required when fulfillmentType
-  // is DELIVERY. Plain Zod object schemas can't express this cross-field
-  // dependency, so we use .refine() to add a custom check.
-  .refine(
-    (data) =>
-      data.fulfillmentType === 'PICKUP' ||
-      (data.deliveryAddress && data.deliveryAddress.length > 0),
-    {
-      message: 'Delivery address is required for delivery orders',
-      path: ['deliveryAddress'],
-    }
-  );
+// Input validation schemas live in ./lib/schemas.ts so they can be unit-
+// tested in isolation. Routes below call schema.safeParse(req.body)
+// before touching the database — bad input is rejected with a 400
+// plus a list of issues, so we never write malformed data.
 
 // ---------------------------------------------------------------------------
 // Auth middleware
@@ -513,16 +468,8 @@ app.get('/api/auth/me', async (req: Request, res: Response) => {
 // the wrong buttons, so a malicious client can't use a hand-crafted PATCH
 // to corrupt history.
 
-const VALID_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
-  NEW: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['COMPLETED', 'CANCELLED'],
-  COMPLETED: [], // terminal
-  CANCELLED: [], // terminal
-};
-
-const updateOrderStatusSchema = z.object({
-  status: z.enum(['CONFIRMED', 'COMPLETED', 'CANCELLED']),
-});
+// The actual transition table + the request body schema both live in
+// ./lib/ so they can be unit-tested without booting Express.
 
 app.patch(
   '/api/orders/:id',
@@ -548,8 +495,7 @@ app.patch(
         return res.status(404).json({ error: 'Order not found' });
       }
 
-      const allowed = VALID_STATUS_TRANSITIONS[order.status] ?? [];
-      if (!allowed.includes(newStatus)) {
+      if (!canTransition(order.status, newStatus)) {
         return res.status(400).json({
           error: `Cannot move order from ${order.status} to ${newStatus}`,
         });
@@ -644,9 +590,6 @@ app.post('/api/admin/products', requireAdmin, async (req: Request, res: Response
 // all of them 1..N in a single transaction. This is O(N) on every move,
 // which is overkill at 30 products but completely fine — and it means
 // we never have to worry about ties or fractional ordering schemes.
-const moveProductSchema = z.object({
-  direction: z.enum(['up', 'down']),
-});
 
 app.post(
   '/api/admin/products/:id/move',

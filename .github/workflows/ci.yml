@@ -1,0 +1,53 @@
+# CI pipeline for Homas Bakery.
+#
+# Runs on every push to main and every pull request. The job installs
+# dependencies from package-lock.json (so we test the exact versions
+# committed), then runs typecheck and unit tests across all workspaces.
+#
+# Stays under the GitHub Actions free tier easily — a single ~30s job
+# per push.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Typecheck + Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Caches ~/.npm so npm ci is fast on subsequent runs.
+          cache: 'npm'
+
+      - name: Install dependencies
+        # `npm ci` is the strict install: refuses to start if package-lock
+        # is out of sync, ignores any local node_modules state. Exactly
+        # what you want for reproducible CI runs.
+        run: npm ci
+
+      - name: Generate Prisma client
+        # Prisma's generated client is gitignored, so CI needs to
+        # produce it before TypeScript can typecheck imports from
+        # '@prisma/client'. The DATABASE_URL here is a placeholder —
+        # `prisma generate` only reads the schema, it doesn't connect.
+        run: npx prisma generate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+
+      - name: Typecheck (all workspaces)
+        run: npm run typecheck --workspaces --if-present
+
+      - name: Run tests (all workspaces)
+        run: npm test --workspaces --if-present

@@ -43,8 +43,11 @@ type OrderForEmail = {
 };
 
 // --- Formatting helpers ---------------------------------------------------
+//
+// Exported so the test suite can verify them directly without booting the
+// rest of the module.
 
-function formatPrice(cents: number): string {
+export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
@@ -66,7 +69,7 @@ function totalCents(order: OrderForEmail): number {
 // HTML-escape any string before interpolating it into a template, so a
 // customer-controlled value (name, notes, etc.) can't inject markup or
 // scripts into the email.
-function escape(s: string): string {
+export function escape(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
