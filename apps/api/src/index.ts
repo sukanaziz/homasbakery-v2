@@ -19,7 +19,7 @@
 // We import the Sentry SDK here only for the express error handler below.
 import * as Sentry from '@sentry/node';
 import express, { type Request, type Response, type NextFunction } from 'express';
-import { canTransition } from './lib/orderStatus';
+import { canTransition } from './lib/orderStatus.js';
 import {
   loginSchema,
   createProductSchema,
@@ -27,7 +27,7 @@ import {
   createOrderSchema,
   updateOrderStatusSchema,
   moveProductSchema,
-} from './lib/schemas';
+} from './lib/schemas.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -42,9 +42,8 @@ import { promises as fs } from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import 'dotenv/config';
-import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { sendOrderEmails } from './mailer';
+import { sendOrderEmails } from './mailer.js';
 
 // Tells TypeScript that req.session.adminId is a thing we set during login.
 // Without this, accessing req.session.adminId anywhere in the file would

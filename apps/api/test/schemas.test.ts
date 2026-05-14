@@ -12,7 +12,7 @@ import {
   createOrderSchema,
   updateOrderStatusSchema,
   createProductSchema,
-} from '../src/lib/schemas';
+} from '../src/lib/schemas.js';
 
 describe('loginSchema', () => {
   it('accepts a valid email + password', () => {

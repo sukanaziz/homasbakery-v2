@@ -1,0 +1,16 @@
+// Production build config. Used by `npm run build` (which `tsc -p` reads).
+//
+// Inherits everything from tsconfig.json, but compiles ONLY src/** with
+// rootDir pinned to "src" so the output lands flat in dist/ as expected
+// by the Dockerfile (e.g. dist/index.js, dist/instrument.js).
+//
+// We exclude prisma/seed.ts because it's only ever run via tsx, not as
+// part of the compiled production bundle. Same for tests.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "prisma", "test"]
+}

@@ -1,0 +1,54 @@
+# Files Docker should NEVER copy into a build context.
+#
+# These either contain secrets we never want in an image, or are huge +
+# unnecessary (the build does its own clean `npm ci` instead of copying
+# node_modules from the host).
+
+# Dependencies — installed fresh inside the build
+node_modules
+**/node_modules
+
+# Environment files — secrets, never go in an image
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# Build output from previous runs
+dist
+build
+**/dist
+**/build
+
+# Prisma's generated client — regenerated inside the build
+**/src/generated
+
+# Uploaded product images — these are user content, not code
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# Git metadata
+.git
+.gitignore
+.github
+
+# OS and editor junk
+.DS_Store
+.vscode
+.idea
+*.swp
+
+# Tests and CI config — not needed in a runtime image
+**/test
+**/*.test.ts
+**/*.test.tsx
+.github/workflows
+
+# Logs
+*.log
+npm-debug.log*
+
+# README and docs — not needed in production
+README.md
+*.md

@@ -5,7 +5,7 @@
 // run on every email we generate.
 
 import { describe, it, expect } from 'vitest';
-import { formatPrice, escape } from '../src/mailer';
+import { formatPrice, escape } from '../src/mailer.js';
 
 describe('formatPrice', () => {
   it('converts cents to a USD string with two decimal places', () => {

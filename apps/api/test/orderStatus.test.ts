@@ -5,7 +5,7 @@
 // open up a forbidden transition (e.g. moving COMPLETED back to NEW).
 
 import { describe, it, expect } from 'vitest';
-import { canTransition, VALID_STATUS_TRANSITIONS } from '../src/lib/orderStatus';
+import { canTransition, VALID_STATUS_TRANSITIONS } from '../src/lib/orderStatus.js';
 
 describe('canTransition', () => {
   it('allows NEW → CONFIRMED', () => {
