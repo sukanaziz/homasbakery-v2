@@ -1,137 +1,126 @@
-# Homas Bakery
+# Homa's Bakery
 
 [![CI](https://github.com/sukanaziz/homasbakery-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/sukanaziz/homasbakery-v2/actions/workflows/ci.yml)
 
 Production e-commerce + admin tool for a small, family-run Afghan bakery in
-Hayward, California. Customers browse the menu, place pickup or delivery
-order requests, and receive a confirmation email. The bakery owner manages
-the menu, photos, and incoming orders from a private admin dashboard.
+Hayward, California. Customers browse the menu, place pickup or delivery order
+requests, and receive confirmation emails. The bakery owner manages the menu,
+product photos, and incoming orders from a private admin dashboard.
 
-This is a full rebuild of an earlier version that was a vanilla
-HTML/CSS/JS + SQLite app. The goals of this rewrite were:
+Live production URLs:
+
+- Customer site: https://www.homasbakery.com
+- API: https://api.homasbakery.com
+- API health check: https://api.homasbakery.com/api/health
+
+This is a full rebuild of an earlier version that was a vanilla HTML/CSS/JS +
+SQLite app. The goals of this rewrite were:
 
 - Move to a typed, modern stack so the codebase is easier to extend.
-- Replace SQLite with Postgres so the system can grow.
-- Add a real admin experience (orders + product management) so the
-  bakery owner doesn't need a developer to update the menu.
-- Layer in real production hygiene (auth, validation, rate limits,
-  transactional email, image uploads).
+- Replace SQLite with PostgreSQL so the system can grow.
+- Add a real admin experience for orders and product management.
+- Allow the bakery owner to update the menu without needing a developer.
+- Add production hygiene: authentication, validation, rate limiting,
+  transactional email, image uploads, error tracking, CI, and AWS deployment.
 
 ## What it does
 
-**Customer-facing site**
+### Customer-facing site
 
-- Welcome page with a rotating "Customer Favorites" slideshow pulled
-  from whatever's at the top of the menu order.
-- Menu page with product cards (name, photo, description, price) and
-  a quantity selector on each card.
+- Welcome page with a rotating "Customer Favorites" slideshow pulled from
+  products in the menu.
+- Menu page with product cards including name, photo, description, price, and
+  quantity selector.
 - Cart bar that sticks to the bottom of the menu while items are selected.
-- Order request form: customer info, pickup-or-delivery toggle (delivery
-  shows an address field and notes that a delivery fee will be added on
-  confirmation), date + time picker, optional notes, required 50%
-  prepayment agreement checkbox.
+- Order request form with customer info, pickup-or-delivery flow, delivery
+  address fields, requested date/time, optional notes, and required 50%
+  prepayment agreement.
 - Confirmation screen with the order ID after submission.
+- Confirmation email sent to the customer after an order request is placed.
 
-**Behind the scenes**
+### Behind the scenes
 
-- A confirmation email goes out to the customer (FROM `orders@homasbakery.com`)
-  via Resend. Their `Reply-To` is the bakery's Gmail so a customer reply
-  lands in the bakery's actual inbox.
-- A separate notification email goes to the bakery owner with all the
-  order details, customer contact info, and totals.
+- Customer confirmation emails are sent through Resend.
+- Bakery notification emails include order details, customer contact info,
+  pickup/delivery details, notes, totals, and order ID.
+- Customer replies go to the bakery inbox through the configured bakery email.
+- Orders store price snapshots at the time of purchase so historical order
+  totals remain accurate even if product prices change later.
 
-**Admin side (`/admin/*`)**
+### Admin side
 
-- Email + password login backed by bcrypt + Redis-stored sessions.
-- Orders dashboard with status badges (NEW / CONFIRMED / COMPLETED /
-  CANCELLED) and contextual action buttons that walk an order through
-  its lifecycle. Status transitions are validated server-side.
-- Products dashboard for adding, editing, deleting, and reordering menu
-  items. Image upload is built in. Reordering uses up/down arrows;
-  display order is reflected on the customer site.
+- Private admin login with bcrypt-backed password verification.
+- Redis-backed sessions using signed cookies.
+- Orders dashboard with status badges and contextual action buttons.
+- Server-validated order lifecycle transitions:
+  - NEW
+  - CONFIRMED
+  - COMPLETED
+  - CANCELLED
+- Products dashboard for adding, editing, deleting, and reordering menu items.
+- Product image upload with processing and validation.
+- Reordering uses up/down controls and is reflected on the customer-facing menu.
 
 ## Stack
 
-- **Frontend** — React + TypeScript + Vite, TailwindCSS v4, TanStack Query
-  for server state, react-router-dom for routing.
-- **Backend** — Node.js + Express + TypeScript with Zod for input validation.
+- **Frontend** — React + TypeScript + Vite, TailwindCSS v4, TanStack Query,
+  and react-router-dom.
+- **Backend** — Node.js + Express + TypeScript with Zod request validation.
 - **Database** — PostgreSQL with Prisma as the ORM and migration tool.
-- **Sessions** — Redis (via `connect-redis` + `express-session`).
-- **Email** — Resend with a verified `homasbakery.com` sending domain.
-- **Image upload** — `multer` to local disk in dev; will move to S3 in prod.
-- **Security** — `helmet` for response headers, `express-rate-limit` for
-  login + order spam protection, signed cookies, CORS lock to the local
-  frontend origin.
-- **Local infra** — Docker Compose runs Postgres and Redis so the dev
-  setup is "clone and `npm run dev`."
+- **Sessions** — Redis using `connect-redis` + `express-session`.
+- **Authentication** — bcrypt password hashing with server-side session storage.
+- **Email** — Resend with the `homasbakery.com` sending domain.
+- **Image upload** — `multer` + Sharp image processing. Product images are
+  currently stored on the API host and served through the API domain; moving
+  uploads to S3 is planned as a future improvement.
+- **Security** — Helmet response headers, signed cookies, production CORS
+  allowlist, Zod validation, and rate limiting for sensitive routes.
+- **Monitoring** — Sentry error tracking.
+- **Testing** — Vitest test suite.
+- **CI** — GitHub Actions typechecks and runs tests on every push.
+- **Deployment** — AWS EC2, RDS PostgreSQL, Docker, Redis, Nginx, Certbot,
+  S3, CloudFront, ACM, and GoDaddy DNS.
+
+## Production architecture
+
+The production deployment uses separate frontend and backend hosts:
+
+- `https://www.homasbakery.com` serves the React frontend through S3 +
+  CloudFront.
+- `https://api.homasbakery.com` serves the Express API through Nginx on EC2.
+
+Current production architecture:
+
+- React/Vite frontend hosted in S3.
+- CloudFront serves the frontend with HTTPS and React route fallbacks.
+- Express/TypeScript API runs as a Docker container on EC2.
+- Nginx reverse proxies HTTPS API traffic to the Dockerized API on port 3000.
+- PostgreSQL production database is hosted on AWS RDS.
+- Redis runs in Docker on EC2 for session storage.
+- SSL/TLS is configured with ACM for the frontend and Certbot for the API.
+- GoDaddy DNS points the production domains to CloudFront and EC2.
 
 ## Project layout
 
-```
+```txt
 homasbakery-v2/
 ├── apps/
-│   ├── web/                React frontend (Vite)
+│   ├── web/                  React frontend (Vite)
 │   │   └── src/
-│   │       ├── pages/      One file per top-level route
-│   │       └── lib/        Shared client helpers (auth hooks)
-│   └── api/                Express backend
+│   │       ├── pages/        One file per top-level route
+│   │       └── lib/          Shared client helpers
+│   └── api/                  Express backend
 │       ├── src/
-│       │   ├── index.ts    Routes, middleware, server bootstrap
-│       │   └── mailer.ts   Resend email templates + send logic
+│       │   ├── index.ts      Routes, middleware, and server bootstrap
+│       │   ├── instrument.ts Sentry/server instrumentation
+│       │   ├── mailer.ts     Resend email templates and send logic
+│       │   └── lib/          Shared backend helpers and schemas
 │       ├── prisma/
 │       │   ├── schema.prisma
-│       │   ├── seed.ts     Creates the first admin user
-│       │   └── migrations/ Versioned SQL — committed
-│       └── uploads/        Product images in dev
+│       │   ├── seed.ts       Creates the first admin user
+│       │   └── migrations/   Versioned SQL migrations
+│       └── uploads/          Product images in local/dev usage
 ├── docker-compose.yml
-└── package.json            npm workspaces root
-```
-
-## Running locally
-
-Requires Docker Desktop and Node 20+.
-
-```bash
-# 1. Start Postgres + Redis containers
-docker compose up -d
-
-# 2. Install all workspace deps
-npm install
-
-# 3. Apply database migrations and generate the Prisma client
-cd apps/api && npx prisma migrate dev && cd ../..
-
-# 4. Seed the first admin user (uses values from apps/api/.env)
-cd apps/api && npx prisma db seed && cd ../..
-
-# 5. Start both frontend and backend dev servers
-npm run dev
-```
-
-Then open:
-
-- `http://localhost:5173/` — customer site
-- `http://localhost:5173/admin/login` — admin (bookmark this; there is no link to it from the public pages)
-- `http://localhost:3000/api/health` — API health probe
-
-### Required env vars
-
-Live in `apps/api/.env`. A real `.env` is gitignored; the keys you need are:
-
-```
-DATABASE_URL          Postgres connection string
-SESSION_SECRET        Used to sign session cookies
-REDIS_URL             redis://localhost:6379 in dev
-RESEND_API_KEY        From resend.com
-FROM_EMAIL            "Homas Bakery <orders@homasbakery.com>"
-BAKERY_EMAIL          Where bakery notifications get sent
-SEED_ADMIN_EMAIL      Used by prisma/seed.ts
-SEED_ADMIN_PASSWORD   Plaintext; the seed script bcrypts it
-SEED_ADMIN_NAME       Display name for the admin
-```
-
-## Status
-
-🚧 Active development. Live v1 site (vanilla JS + SQLite) still serves
-real customer orders at homasbakery.com on Render. v2 will replace it
-once the cutover plan (DNS swap, data migration, AWS deployment) lands.
+├── docker-compose.prod.yml
+├── package.json
+└── package-lock.json
