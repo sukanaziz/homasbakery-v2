@@ -11,7 +11,7 @@
 //
 // All decorative SVG icons are inlined below to avoid pulling in an icon
 // library for what's a small handful of glyphs.
-import { apiUrl } from '../lib/api'
+import { apiUrl, assetUrl} from '../lib/api'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -194,14 +194,14 @@ function FeaturedSlideshow() {
                     {/* Blurred backdrop — fills empty space with an artistic
                         version of the image so it doesn't look bare */}
                     <img
-                      src={product.imageUrl}
+                      src={assetUrl(product.imageUrl)}
                       alt=""
                       aria-hidden
                       className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
                     />
                     {/* The actual fully-visible image on top */}
                     <img
-                      src={product.imageUrl}
+                      src={assetUrl(product.imageUrl)}
                       alt={product.name}
                       className="relative w-full h-full object-contain"
                     />

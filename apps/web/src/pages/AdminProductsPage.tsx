@@ -13,7 +13,7 @@
 // Ordering uses up/down arrows that hit POST /api/admin/products/:id/move.
 // The backend renumbers everyone in a transaction so positions stay
 // dense and unique.
-import { apiUrl } from '../lib/api'
+import { apiUrl, assetUrl } from '../lib/api'
 import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -464,7 +464,7 @@ export default function AdminProductsPage() {
 
                   {product.imageUrl ? (
                     <img
-                      src={product.imageUrl}
+                      src={assetUrl(product.imageUrl)}
                       alt={product.name}
                       className="w-full aspect-square object-cover rounded-lg mb-4 bg-amber-50"
                     />
@@ -564,7 +564,7 @@ export default function AdminProductsPage() {
                   <div className="w-28 h-28 rounded-lg bg-white border border-amber-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {draft.imageUrl ? (
                       <img
-                        src={draft.imageUrl}
+                        src={assetUrl(draft.imageUrl)}
                         alt="Preview"
                         className="w-full h-full object-cover"
                       />

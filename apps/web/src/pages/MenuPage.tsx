@@ -8,7 +8,7 @@
 // Cart state is a plain Record<productId, quantity> kept in this component.
 // We don't persist it across page reloads — orders are usually built and
 // submitted in one sitting, and the form is short enough that this is fine.
-import { apiUrl } from '../lib/api'
+import { apiUrl, assetUrl } from '../lib/api'
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -316,7 +316,7 @@ export default function MenuPage() {
                     >
                       {product.imageUrl ? (
                         <img
-                          src={product.imageUrl}
+                          src={assetUrl(product.imageUrl)}
                           alt={product.name}
                           className="w-full aspect-square object-cover bg-amber-50"
                         />
