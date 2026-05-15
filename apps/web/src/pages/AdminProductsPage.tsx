@@ -13,7 +13,7 @@
 // Ordering uses up/down arrows that hit POST /api/admin/products/:id/move.
 // The backend renumbers everyone in a transaction so positions stay
 // dense and unique.
-
+import { apiUrl } from '../lib/api'
 import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -69,14 +69,14 @@ function WheatIcon({ className = '' }: { className?: string }) {
 // TanStack Query's `error` handle it for us.
 
 async function fetchAdminProducts(): Promise<Product[]> {
-  const res = await fetch('/api/admin/products', { credentials: 'include' })
+  const res = await fetch(apiUrl('/api/admin/products'), { credentials: 'include' })
   if (res.status === 401) throw new Error('Not authenticated')
   if (!res.ok) throw new Error('Failed to load products')
   return res.json()
 }
 
 async function createProduct(input: ProductInput): Promise<Product> {
-  const res = await fetch('/api/admin/products', {
+  const res = await fetch(apiUrl('/api/admin/products'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -90,7 +90,7 @@ async function createProduct(input: ProductInput): Promise<Product> {
 }
 
 async function updateProduct(input: { id: string; data: Partial<ProductInput> }): Promise<Product> {
-  const res = await fetch(`/api/admin/products/${input.id}`, {
+  const res = await fetch(apiUrl(`/api/admin/products/${input.id}`), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -104,7 +104,7 @@ async function updateProduct(input: { id: string; data: Partial<ProductInput> })
 }
 
 async function deleteProduct(id: string): Promise<void> {
-  const res = await fetch(`/api/admin/products/${id}`, {
+  const res = await fetch(apiUrl(`/api/admin/products/${id}`), {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -115,7 +115,7 @@ async function deleteProduct(id: string): Promise<void> {
 }
 
 async function moveProduct(input: { id: string; direction: 'up' | 'down' }): Promise<void> {
-  const res = await fetch(`/api/admin/products/${input.id}/move`, {
+  const res = await fetch(apiUrl(`/api/admin/products/${input.id}/move`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -130,7 +130,7 @@ async function moveProduct(input: { id: string; direction: 'up' | 'down' }): Pro
 async function uploadImage(file: File): Promise<string> {
   const fd = new FormData()
   fd.append('image', file)
-  const res = await fetch('/api/admin/upload', {
+  const res = await fetch(apiUrl('/api/admin/upload'), {
     method: 'POST',
     credentials: 'include',
     body: fd,

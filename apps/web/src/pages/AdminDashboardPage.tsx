@@ -9,7 +9,7 @@
 // Auth flow is "render-or-redirect": useMe() tells us whether someone's
 // logged in. If not, <Navigate /> bounces them to /admin/login before
 // any of the dashboard renders.
-
+import { apiUrl } from '../lib/api'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMe, useLogout } from '../lib/auth'
@@ -143,7 +143,7 @@ function actionButtonLabel(action: NextStatus): string {
 }
 
 async function fetchOrders(): Promise<Order[]> {
-  const res = await fetch('/api/orders', { credentials: 'include' })
+  const res = await fetch(apiUrl('/api/orders'), { credentials: 'include' })
   if (res.status === 401) throw new Error('Not authenticated')
   if (!res.ok) throw new Error('Failed to fetch orders')
   return res.json()
@@ -153,7 +153,7 @@ async function updateOrderStatus(input: {
   id: string
   status: NextStatus
 }): Promise<Order> {
-  const res = await fetch(`/api/orders/${input.id}`, {
+  const res = await fetch(apiUrl(`/api/orders/${input.id}`), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

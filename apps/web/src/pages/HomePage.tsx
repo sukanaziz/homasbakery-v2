@@ -11,7 +11,7 @@
 //
 // All decorative SVG icons are inlined below to avoid pulling in an icon
 // library for what's a small handful of glyphs.
-
+import { apiUrl } from '../lib/api'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -28,7 +28,7 @@ type Product = {
 }
 
 async function fetchProducts(): Promise<Product[]> {
-  const r = await fetch('/api/products')
+  const r = await fetch(apiUrl('/api/products'))
   if (!r.ok) throw new Error('Failed to fetch products')
   return r.json()
 }

@@ -6,7 +6,6 @@
 //
 // On successful login, useLogin() updates the cached ['me'] query so the
 // rest of the app sees the new auth state, then we navigate to /admin.
-
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useMe, useLogin } from '../lib/auth'

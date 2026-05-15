@@ -4,6 +4,7 @@
 // via TanStack Query under the key ['me']), and useLogin / useLogout are
 // mutation hooks that update that cache directly so the entire app sees
 // the new auth state instantly without an extra round trip.
+import { apiUrl } from './api'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -20,7 +21,7 @@ export type Admin = {
 // every request would be unauthenticated.
 
 async function fetchMe(): Promise<Admin | null> {
-  const res = await fetch('/api/auth/me', { credentials: 'include' })
+  const res = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' })
   // 401 is a normal answer for "not logged in" — return null instead of
   // treating it as an error.
   if (res.status === 401) return null
@@ -29,7 +30,7 @@ async function fetchMe(): Promise<Admin | null> {
 }
 
 async function login(input: { email: string; password: string }): Promise<Admin> {
-  const res = await fetch('/api/auth/login', {
+  const res = await fetch(apiUrl('/api/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -45,7 +46,7 @@ async function login(input: { email: string; password: string }): Promise<Admin>
 }
 
 async function logout(): Promise<void> {
-  const res = await fetch('/api/auth/logout', {
+  const res = await fetch(apiUrl('/api/auth/logout'), {
     method: 'POST',
     credentials: 'include',
   })
