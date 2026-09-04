@@ -8,7 +8,7 @@
 // Cart state is a plain Record<productId, quantity> kept in this component.
 // We don't persist it across page reloads — orders are usually built and
 // submitted in one sitting, and the form is short enough that this is fine.
-import { apiUrl, assetUrl } from '../lib/api'
+import { apiUrl, assetUrl, fetchWithTimeout } from '../lib/api'
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -105,13 +105,13 @@ function getMinDateTimeString(): string {
 }
 
 async function fetchProducts(): Promise<Product[]> {
-  const r = await fetch(apiUrl('/api/products'))
+  const r = await fetchWithTimeout(apiUrl('/api/products'))
   if (!r.ok) throw new Error('Failed to fetch products')
   return r.json()
 }
 
 async function createOrder(input: CreateOrderInput): Promise<CreatedOrder> {
-  const r = await fetch(apiUrl('/api/orders'), {
+  const r = await fetchWithTimeout(apiUrl('/api/orders'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -300,9 +300,21 @@ export default function MenuPage() {
               <p className="text-center text-stone-600">Loading our fresh selection…</p>
             )}
             {productsQuery.error && (
-              <p className="text-center text-red-700">
-                Something went wrong loading products. Please refresh.
-              </p>
+              <div className="max-w-xl mx-auto text-center bg-white border border-red-200 rounded-xl p-5">
+                <p className="text-red-800 font-medium">
+                  We couldn't load the menu right now.
+                </p>
+                <p className="text-stone-600 text-sm mt-2">
+                  Please refresh, or try again in a moment.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => productsQuery.refetch()}
+                  className="mt-4 py-2 px-5 bg-amber-900 hover:bg-amber-950 text-amber-50 font-medium rounded-full transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
             )}
 
             {productsQuery.data && (

@@ -77,12 +77,33 @@ if (process.env.NODE_ENV === 'production' && SESSION_SECRET === 'dev-secret-chan
   );
 }
 
-// Redis powers two things in this app: session storage (so login state
-// survives an API restart) and rate limit counters. We connect once at
-// startup; the connection is reused for the rest of the process lifetime.
-const redisClient = createClient({ url: REDIS_URL });
+// Redis normally stores admin sessions so login state survives API restarts.
+// If Redis is temporarily unavailable, keep the API online with the default
+// in-memory session store so public menu/order routes don't go dark.
+const redisClient = createClient({
+  url: REDIS_URL,
+  socket: {
+    reconnectStrategy: false,
+  },
+});
 redisClient.on('error', (err) => console.error('Redis client error:', err));
-await redisClient.connect();
+
+let sessionStore: RedisStore | undefined;
+try {
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Redis connection timed out')), 5_000);
+  });
+  await Promise.race([
+    redisClient.connect(),
+    timeout,
+  ]);
+  sessionStore = new RedisStore({ client: redisClient, prefix: 'sess:' });
+} catch (error) {
+  if (redisClient.isOpen) {
+    await redisClient.destroy();
+  }
+  console.error('Redis unavailable; using in-memory session store:', error);
+}
 
 // ---------------------------------------------------------------------------
 // Middleware
@@ -194,7 +215,7 @@ app.use('/api/', apiLimiter);
 // Must come BEFORE any route that reads or writes req.session.
 app.use(
   session({
-    store: new RedisStore({ client: redisClient, prefix: 'sess:' }),
+    store: sessionStore,
     secret: SESSION_SECRET,
     resave: false,             // don't re-save unchanged sessions
     saveUninitialized: false,  // don't create sessions for anonymous visitors
@@ -757,7 +778,9 @@ Sentry.setupExpressErrorHandler(app);
 // Redis subscriptions dangling.
 process.on('SIGINT', async () => {
   await prisma.$disconnect();
-  await redisClient.quit();
+  if (redisClient.isOpen) {
+    await redisClient.quit();
+  }
   process.exit(0);
 });
 
