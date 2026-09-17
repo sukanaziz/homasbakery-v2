@@ -214,6 +214,13 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-amber-50">
+      <a
+        href="#orders-content"
+        className="skip-link"
+        onClick={() => document.getElementById('orders-content')?.focus()}
+      >
+        Skip to orders
+      </a>
       {/* Header */}
       <header className="bg-white border-b border-amber-100">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
@@ -261,7 +268,7 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main id="orders-content" tabIndex={-1} className="mx-auto max-w-6xl px-6 py-10">
         {/* Page heading + summary */}
         <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
           <div>

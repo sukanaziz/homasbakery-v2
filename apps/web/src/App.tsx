@@ -14,7 +14,7 @@
 // routing dumb means a non-logged-in visitor at /admin gets a clean
 // redirect rather than a flash of dashboard UI.
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import MenuPage from './pages/MenuPage'
@@ -31,13 +31,26 @@ import AdminProductsPage from './pages/AdminProductsPage'
 // renders nothing, it just runs the scroll effect on every route change.
 function ScrollToTop() {
   const { pathname } = useLocation()
+  const previousPath = useRef(pathname)
   useEffect(() => {
+    const titles: Record<string, string> = {
+      '/': 'Afghan pastries in Hayward',
+      '/menu': 'Menu and order request',
+      '/privacy': 'Privacy policy',
+      '/terms': 'Terms of service',
+    }
+    document.title = titles[pathname] ? `${titles[pathname]} | Homas Bakery` : 'Homas Bakery Admin'
+    if (previousPath.current !== pathname) {
+      document.getElementById('main-content')?.focus({ preventScroll: true })
+      previousPath.current = pathname
+    }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [pathname])
   return null
 }
 
 export default function App() {
+  const { pathname } = useLocation()
   return (
     <>
       <ScrollToTop />
@@ -50,6 +63,14 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboardPage />} />
         <Route path="/admin/products" element={<AdminProductsPage />} />
       </Routes>
+      {!pathname.startsWith('/admin') && (
+        <aside aria-label="Accessibility assistance" className={`bg-amber-50 px-6 pt-4 text-center text-sm text-stone-700 ${pathname === '/menu' ? 'pb-28' : 'pb-6'}`}>
+          Need help using the website or placing an order?{' '}
+          <a className="underline text-amber-900" href="mailto:homasbakery20@gmail.com?subject=Website%20accessibility%20help">
+            Email us for accessibility help
+          </a>.
+        </aside>
+      )}
     </>
   )
 }

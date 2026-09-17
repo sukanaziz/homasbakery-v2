@@ -15,6 +15,8 @@ const EFFECTIVE_DATE = 'May 2026'
 function WheatIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -37,6 +39,9 @@ function WheatIcon({ className = '' }: { className?: string }) {
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-amber-50 flex flex-col">
+      <a href="#main-content" className="skip-link" onClick={() => document.getElementById('main-content')?.focus()}>
+        Skip to main content
+      </a>
       <header className="bg-amber-50/80 backdrop-blur-sm border-b border-amber-200/60 sticky top-0 z-30">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
@@ -52,7 +57,7 @@ export default function PrivacyPolicyPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-16 flex-1 w-full">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-3xl px-6 py-16 flex-1 w-full">
         <p className="text-sm font-medium tracking-widest uppercase text-amber-700 mb-3">Legal</p>
         <h1 className="font-display text-4xl md:text-5xl font-medium text-amber-950 mb-3">
           Privacy Policy

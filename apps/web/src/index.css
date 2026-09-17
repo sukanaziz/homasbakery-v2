@@ -18,6 +18,46 @@
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
+/* Keep keyboard focus visible, including on controls with outline utilities. */
+:focus-visible {
+  outline: 3px solid #92400e;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px #fff;
+}
+
+/* Leave space for the sticky navigation and order bar when focusing content. */
+[id], h1, button, input, textarea, a {
+  scroll-margin-top: 7rem;
+  scroll-margin-bottom: 9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The first keyboard stop lets dashboard users bypass repeated navigation. */
+.skip-link {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  transform: translateY(calc(-100% - 2rem));
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #451a03;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* App-wide defaults: Inter on every element, Fraunces on every heading. */
 @layer base {
   html {

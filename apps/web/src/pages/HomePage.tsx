@@ -3,7 +3,7 @@
 // Sections, top to bottom:
 //   - Sticky nav bar with logo, links, Instagram icon, "Order Now" button
 //   - Hero with the headline and primary CTA
-//   - Customer Favorites slideshow (auto rotating, top 4 by displayOrder)
+//   - Customer Favorites slideshow (five-second timer with pause controls)
 //   - About section
 //   - 3-card info grid: Made to Order / Pickup / Get in Touch
 //   - Bottom CTA on a dark amber background
@@ -40,6 +40,8 @@ async function fetchProducts(): Promise<Product[]> {
 function WheatIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -62,6 +64,8 @@ function WheatIcon({ className = '' }: { className?: string }) {
 function SparkleIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -79,6 +83,8 @@ function SparkleIcon({ className = '' }: { className?: string }) {
 function HomeIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -97,6 +103,8 @@ function HomeIcon({ className = '' }: { className?: string }) {
 function MailIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -114,6 +122,8 @@ function MailIcon({ className = '' }: { className?: string }) {
 function InstagramIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -133,9 +143,8 @@ const INSTAGRAM_URL = 'https://www.instagram.com/homasbakery/'
 
 // --- Featured Slideshow ---------------------------------------------------
 //
-// Auto-rotates through the top 4 products by displayOrder every 4.5
-// seconds. Pauses on hover so the customer can read a description without
-// it sliding away. Dots underneath the slide also let them jump manually.
+// Slides advance every five seconds, with manual selection and pause controls.
+// Keyboard entry pauses rotation until resumed; reduced motion disables it.
 //
 // Each slide has a blurred copy of the image filling the box behind the
 // fully-visible image, so we get a polished backdrop instead of empty
@@ -150,15 +159,27 @@ function FeaturedSlideshow() {
   const featured = (productsQuery.data ?? []).slice(0, 4)
   const [index, setIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+  const isRotating = !isPaused && !isHovered && !reducedMotion && featured.length > 1
+  const activeIndex = index % (featured.length || 1)
 
-  // Auto-advance every 4.5 seconds, unless hovered
   useEffect(() => {
-    if (isPaused || featured.length === 0) return
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % featured.length)
-    }, 4000)
-    return () => clearInterval(id)
-  }, [isPaused, featured.length])
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = (event: MediaQueryListEvent) => setReducedMotion(event.matches)
+    preference.addEventListener('change', onChange)
+    return () => preference.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    if (!isRotating) return
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % featured.length)
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [isRotating, featured.length])
 
   // Hide the section entirely if we don't have any featured products
   if (featured.length === 0) return null
@@ -177,16 +198,26 @@ function FeaturedSlideshow() {
 
         <div
           className="relative"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
+          role="region"
+          aria-label="Customer favorites"
+          aria-roledescription="carousel"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onFocusCapture={(event) => {
+            if (
+              !event.currentTarget.contains(event.relatedTarget) &&
+              event.target.matches(':focus-visible')
+            ) setIsPaused(true)
+          }}
         >
           {/* Slideshow window */}
           <div className="relative aspect-[16/10] sm:aspect-[16/9] max-w-3xl mx-auto rounded-3xl overflow-hidden bg-white shadow-xl">
             {featured.map((product, i) => (
               <div
                 key={product.id}
+                aria-hidden={i !== activeIndex}
                 className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                  i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  i === activeIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
               >
                 {product.imageUrl ? (
@@ -226,16 +257,40 @@ function FeaturedSlideshow() {
             ))}
           </div>
 
-          {/* Navigation dots */}
+          <p className="sr-only" aria-live={isRotating ? 'off' : 'polite'} aria-atomic="true">
+            {featured[activeIndex]?.name}, slide {activeIndex + 1} of {featured.length}
+          </p>
+          {/* Navigation buttons */}
           <div className="flex items-center justify-center gap-2 mt-6">
-            {featured.map((_, i) => (
+            {featured.length > 1 && !reducedMotion && (
+              <button
+                type="button"
+                onClick={() => setIsPaused((paused) => !paused)}
+                aria-label={isPaused ? 'Resume slideshow' : 'Pause slideshow'}
+                title={isPaused ? 'Resume slideshow' : 'Pause slideshow'}
+                className="w-6 h-6 shrink-0 flex items-center justify-center rounded-full bg-amber-800 text-white hover:bg-amber-950 transition-colors"
+              >
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" className="w-3 h-3" fill="currentColor">
+                  {isPaused ? (
+                    <path d="M5 2.5v11L13 8z" />
+                  ) : (
+                    <path d="M4 3h3v10H4zM9 3h3v10H9z" />
+                  )}
+                </svg>
+              </button>
+            )}
+            {featured.map((product, i) => (
               <button
                 key={i}
                 type="button"
-                onClick={() => setIndex(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                className={`h-2 rounded-full transition-all ${
-                  i === index
+                onClick={() => {
+                  setIsPaused(true)
+                  setIndex(i)
+                }}
+                aria-label={`Show ${product.name}, slide ${i + 1} of ${featured.length}`}
+                aria-pressed={i === activeIndex}
+                className={`min-h-6 min-w-6 rounded-full transition-all ${
+                  i === activeIndex
                     ? 'w-8 bg-amber-800'
                     : 'w-2 bg-amber-300 hover:bg-amber-500'
                 }`}
@@ -263,6 +318,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-amber-50 flex flex-col">
       {/* Sticky header with logo, links, IG icon, and Order Now CTA */}
+      <a href="#main-content" className="skip-link" onClick={() => document.getElementById('main-content')?.focus()}>
+        Skip to main content
+      </a>
       <header className="bg-amber-50/80 backdrop-blur-sm border-b border-amber-200/60 sticky top-0 z-30">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
@@ -300,6 +358,7 @@ export default function HomePage() {
         </div>
       </header>
 
+      <main id="main-content" tabIndex={-1}>
       {/* Hero — headline, tagline, CTAs. Blurred amber blobs in the
           background give the section depth without needing an image. */}
       <section className="relative overflow-hidden">
@@ -380,7 +439,7 @@ export default function HomePage() {
             </h3>
             <p className="text-stone-700">Each batch baked fresh</p>
             <p className="text-stone-700">just for your order</p>
-            <p className="text-stone-500 text-sm mt-2">
+            <p className="text-stone-600 text-sm mt-2">
               Submit a request anytime — we'll plan the bake around you
             </p>
           </div>
@@ -394,7 +453,7 @@ export default function HomePage() {
             </h3>
             <p className="text-stone-700">Home-based bakery</p>
             <p className="text-stone-700">Hayward, California</p>
-            <p className="text-stone-500 text-sm mt-2">
+            <p className="text-stone-600 text-sm mt-2">
               Pickup address shared by email & phone after order confirmation
             </p>
           </div>
@@ -448,6 +507,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      </main>
       {/* Footer with brand wordmark, legal links, and Instagram */}
       <footer className="bg-amber-950 text-amber-200 py-10 mt-auto">
         <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">

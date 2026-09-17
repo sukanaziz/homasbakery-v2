@@ -9,7 +9,7 @@
 // We don't persist it across page reloads — orders are usually built and
 // submitted in one sitting, and the form is short enough that this is fine.
 import { apiUrl, assetUrl, fetchWithTimeout } from '../lib/api'
-import { useState, useMemo, type FormEvent, type ReactNode } from 'react'
+import { useState, useMemo, useEffect, useRef, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
@@ -49,6 +49,8 @@ type CreatedOrder = {
 function WheatIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -71,6 +73,8 @@ function WheatIcon({ className = '' }: { className?: string }) {
 function InstagramIcon({ className = '' }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="none"
@@ -139,7 +143,7 @@ function FormField({
     <label className="block">
       <span className="block text-sm font-medium text-amber-950 mb-2">
         {label}
-        {required && <span className="text-red-700"> *</span>}
+        {required && <span className="text-red-700"> (required)</span>}
       </span>
       {children}
     </label>
@@ -153,6 +157,13 @@ const inputClass =
 
 export default function MenuPage() {
   const [view, setView] = useState<'browse' | 'form' | 'success'>('browse')
+  const previousView = useRef(view)
+  useEffect(() => {
+    if (previousView.current !== view) {
+      document.querySelector<HTMLElement>('#main-content h1')?.focus()
+      previousView.current = view
+    }
+  }, [view])
   const [cart, setCart] = useState<Record<string, number>>({})
 
   const [customerName, setCustomerName] = useState('')
@@ -193,12 +204,19 @@ export default function MenuPage() {
   const prepaymentAmount = Math.round(cartSubtotal * 0.5)
 
   const setQty = (id: string, q: number) => {
+    const productIndex = productsQuery.data?.findIndex((product) => product.id === id)
+    const switchingControls = (cart[id] ?? 0) === 0 || q <= 0
     setCart((prev) => {
       const next = { ...prev }
       if (q <= 0) delete next[id]
       else next[id] = Math.min(q, 99)
       return next
     })
+    if (switchingControls && productIndex !== undefined) {
+      requestAnimationFrame(() => {
+        document.querySelectorAll('article')[productIndex]?.querySelector('button')?.focus()
+      })
+    }
   }
 
   const handleSubmit = (e: FormEvent) => {
@@ -237,8 +255,11 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="min-h-screen bg-amber-50 pb-32 flex flex-col">
+    <div className="min-h-screen bg-amber-50 flex flex-col">
       {/* Same sticky nav as HomePage so customers feel like they haven't left */}
+      <a href="#main-content" className="skip-link" onClick={() => document.getElementById('main-content')?.focus()}>
+        Skip to main content
+      </a>
       <header className="bg-amber-50/80 backdrop-blur-sm border-b border-amber-200/60 sticky top-0 z-30">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
@@ -270,7 +291,10 @@ export default function MenuPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-12 lg:py-16 flex-1 w-full">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {cartCount} items in your order. Subtotal {formatPrice(cartSubtotal)}.
+      </p>
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-6 py-12 lg:py-16 flex-1 w-full">
         {/* BROWSE — product grid with quantity selectors */}
         {view === 'browse' && (
           <>
@@ -278,7 +302,7 @@ export default function MenuPage() {
               <p className="text-sm font-medium tracking-widest uppercase text-amber-700 mb-3">
                 Afghan Pastries · Cookies · Sweets
               </p>
-              <h1 className="font-display text-4xl md:text-5xl font-medium text-amber-950 mb-3">
+              <h1 tabIndex={-1} className="font-display text-4xl md:text-5xl font-medium text-amber-950 mb-3">
                 Today's offerings
               </h1>
               <p className="text-stone-600 max-w-xl mx-auto">
@@ -297,10 +321,10 @@ export default function MenuPage() {
             </div>
 
             {productsQuery.isLoading && (
-              <p className="text-center text-stone-600">Loading our fresh selection…</p>
+              <p role="status" className="text-center text-stone-600">Loading our fresh selection…</p>
             )}
             {productsQuery.error && (
-              <div className="max-w-xl mx-auto text-center bg-white border border-red-200 rounded-xl p-5">
+              <div role="alert" className="max-w-xl mx-auto text-center bg-white border border-red-200 rounded-xl p-5">
                 <p className="text-red-800 font-medium">
                   We couldn't load the menu right now.
                 </p>
@@ -338,9 +362,9 @@ export default function MenuPage() {
                         </div>
                       )}
                       <div className="p-6 flex flex-col flex-1">
-                      <h3 className="font-display text-2xl font-semibold text-amber-950">
+                      <h2 className="font-display text-2xl font-semibold text-amber-950">
                         {product.name}
-                      </h3>
+                      </h2>
                       {product.description && (
                         <p className="mt-3 text-stone-600 leading-relaxed flex-1">
                           {product.description}
@@ -354,6 +378,7 @@ export default function MenuPage() {
                           <button
                             type="button"
                             onClick={() => setQty(product.id, 1)}
+                            aria-label={`Add ${product.name} to order`}
                             className="w-full py-3 px-4 bg-amber-900 hover:bg-amber-950 text-amber-50 font-medium rounded-full transition-colors"
                           >
                             Add to order
@@ -363,7 +388,7 @@ export default function MenuPage() {
                             <button
                               type="button"
                               onClick={() => setQty(product.id, qty - 1)}
-                              aria-label="Decrease quantity"
+                              aria-label={`Decrease quantity of ${product.name}`}
                               className="w-10 h-10 flex items-center justify-center bg-white hover:bg-amber-100 text-amber-900 font-bold rounded-full shadow-sm transition-colors"
                             >
                               −
@@ -374,7 +399,8 @@ export default function MenuPage() {
                             <button
                               type="button"
                               onClick={() => setQty(product.id, qty + 1)}
-                              aria-label="Increase quantity"
+                              aria-label={`Increase quantity of ${product.name}`}
+                              disabled={qty >= 99}
                               className="w-10 h-10 flex items-center justify-center bg-white hover:bg-amber-100 text-amber-900 font-bold rounded-full shadow-sm transition-colors"
                             >
                               +
@@ -395,7 +421,7 @@ export default function MenuPage() {
         {view === 'form' && (
           <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto">
             <div className="flex items-center justify-between">
-              <h1 className="font-display text-3xl md:text-4xl font-medium text-amber-950">
+              <h1 tabIndex={-1} className="font-display text-3xl md:text-4xl font-medium text-amber-950">
                 Your Order Request
               </h1>
               <button
@@ -428,7 +454,7 @@ export default function MenuPage() {
                 <span>Subtotal</span>
                 <span>{formatPrice(cartSubtotal)}</span>
               </div>
-              <p className="mt-2 text-xs text-stone-500">
+              <p className="mt-2 text-xs text-stone-600">
                 Subtotal — final pricing confirmed by the bakery
               </p>
             </section>
@@ -441,6 +467,7 @@ export default function MenuPage() {
               <FormField label="Name" required>
                 <input
                   type="text"
+                  autoComplete="name"
                   required
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -450,6 +477,7 @@ export default function MenuPage() {
               <FormField label="Email" required>
                 <input
                   type="email"
+                  autoComplete="email"
                   required
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
@@ -459,6 +487,7 @@ export default function MenuPage() {
               <FormField label="Phone" required>
                 <input
                   type="tel"
+                  autoComplete="tel"
                   required
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
@@ -472,7 +501,7 @@ export default function MenuPage() {
               <h2 className="font-display text-xl font-semibold text-amber-950">
                 Pickup or Delivery
               </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div role="radiogroup" aria-label="Pickup or delivery" className="grid grid-cols-2 gap-3">
                 <label className="cursor-pointer">
                   <input
                     type="radio"
@@ -482,7 +511,7 @@ export default function MenuPage() {
                     onChange={() => setFulfillmentType('PICKUP')}
                     className="sr-only peer"
                   />
-                  <div className="border-2 border-amber-200 peer-checked:border-amber-800 peer-checked:bg-amber-50 rounded-xl p-5 text-center transition-all">
+                  <div className="border-2 border-amber-200 peer-checked:border-amber-800 peer-checked:bg-amber-50 peer-focus-visible:outline-3 peer-focus-visible:outline-amber-800 peer-focus-visible:outline-offset-3 rounded-xl p-5 text-center transition-all">
                     <div className="font-display text-lg font-semibold text-amber-950">
                       Pickup
                     </div>
@@ -498,7 +527,7 @@ export default function MenuPage() {
                     onChange={() => setFulfillmentType('DELIVERY')}
                     className="sr-only peer"
                   />
-                  <div className="border-2 border-amber-200 peer-checked:border-amber-800 peer-checked:bg-amber-50 rounded-xl p-5 text-center transition-all">
+                  <div className="border-2 border-amber-200 peer-checked:border-amber-800 peer-checked:bg-amber-50 peer-focus-visible:outline-3 peer-focus-visible:outline-amber-800 peer-focus-visible:outline-offset-3 rounded-xl p-5 text-center transition-all">
                     <div className="font-display text-lg font-semibold text-amber-950">
                       Delivery
                     </div>
@@ -555,10 +584,15 @@ export default function MenuPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className={inputClass}
+                  aria-describedby="notes-help"
                   placeholder="Allergies, special requests, occasion details, etc."
                 />
               </FormField>
             </section>
+
+            <p id="notes-help" className="text-sm text-stone-700">
+              Prefer email communication? Let us know in your notes, along with any accessibility requests.
+            </p>
 
             {/* Prepayment agreement */}
             <section className="bg-amber-100/70 rounded-2xl border-2 border-amber-300 p-6">
@@ -587,17 +621,20 @@ export default function MenuPage() {
                 />
                 <span className="text-sm text-amber-950 leading-snug">
                   I agree to submit a 50% prepayment after my order is confirmed.
-                  <span className="text-red-700"> *</span>
+                  <span className="text-red-700"> (required)</span>
                 </span>
               </label>
             </section>
 
             {createOrderMutation.error && (
-              <p className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+              <p role="alert" className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
                 {createOrderMutation.error.message}
               </p>
             )}
 
+            <p role="status" className="sr-only">
+              {createOrderMutation.isPending ? 'Sending your order request…' : ''}
+            </p>
             <button
               type="submit"
               disabled={createOrderMutation.isPending || !agreedToPrepayment}
@@ -606,7 +643,7 @@ export default function MenuPage() {
               {createOrderMutation.isPending ? 'Sending…' : 'Submit Order Request'}
             </button>
 
-            <p className="text-center text-xs text-stone-500">
+            <p className="text-center text-xs text-stone-600">
               By submitting, you agree to our{' '}
               <Link to="/terms" className="underline hover:text-amber-800">Terms</Link>
               {' '}and{' '}
@@ -621,7 +658,7 @@ export default function MenuPage() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-2">
               <WheatIcon className="w-8 h-8 text-amber-800" />
             </div>
-            <h1 className="font-display text-3xl md:text-4xl font-medium text-amber-950">
+            <h1 tabIndex={-1} className="font-display text-3xl md:text-4xl font-medium text-amber-950">
               Thanks for your order!
             </h1>
             <p className="text-stone-700 leading-relaxed">
@@ -632,7 +669,7 @@ export default function MenuPage() {
                 : ', '}
               and to send 50% prepayment instructions.
             </p>
-            <p className="text-xs text-stone-500 bg-amber-50 rounded-lg p-3 font-mono break-all">
+            <p className="text-xs text-stone-600 bg-amber-50 rounded-lg p-3 font-mono break-all">
               Order ID: {createOrderMutation.data.id}
             </p>
             <button
@@ -655,7 +692,7 @@ export default function MenuPage() {
                 {cartCount} item{cartCount === 1 ? '' : 's'} •{' '}
                 {formatPrice(cartSubtotal)}
               </div>
-              <div className="text-xs text-stone-500">
+              <div className="text-xs text-stone-600">
                 Final pricing confirmed by the bakery
               </div>
             </div>
