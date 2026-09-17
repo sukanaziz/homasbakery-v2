@@ -13,9 +13,9 @@ services:
     container_name: homas-postgres
     restart: unless-stopped
     ports:
-      # Forward the container's 5432 to localhost:5432 so the API on the
+      # Forward the container's 5432 to localhost:5433 so the API on the
       # host machine can connect via DATABASE_URL.
-      - "5432:5432"
+      - "5433:5432"
     environment:
       # Used by the official Postgres image to bootstrap the database on
       # first run. These match what's in apps/api/.env. Never use these
