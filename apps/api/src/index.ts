@@ -152,13 +152,14 @@ if (frontendDistExists) {
 
 // CORS lets the browser send requests from the frontend origin to this API
 // origin. credentials: true is required for the session cookie to flow
-// across origins. The allowed origin comes from FRONTEND_URL so the same
-// code works locally (localhost:5173) and in production (homasbakery.com).
+// across origins. Allow the configured custom domain and Render's service
+// URL so either public hostname can be used.
 //
 // We additionally allow private-network origins in dev so you can preview
 // the site on a phone over Wi-Fi (e.g. http://192.168.1.42:5173). This is
-// gated by NODE_ENV !== 'production' so prod stays locked to FRONTEND_URL.
+// gated by NODE_ENV !== 'production' so prod stays locked to known origins.
 const PRIVATE_LAN_ORIGIN = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$/;
+const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL;
 
 app.use(
   cors({
@@ -166,7 +167,7 @@ app.use(
       // Non-browser callers (curl, server-to-server) don't send an Origin
       // header. Let those through — CORS only applies to browsers anyway.
       if (!origin) return cb(null, true);
-      if (origin === FRONTEND_URL) return cb(null, true);
+      if (origin === FRONTEND_URL || origin === RENDER_EXTERNAL_URL) return cb(null, true);
       if (process.env.NODE_ENV !== 'production' && PRIVATE_LAN_ORIGIN.test(origin)) {
         return cb(null, true);
       }
