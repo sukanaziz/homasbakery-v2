@@ -40,6 +40,10 @@ function ScrollToTop() {
       '/terms': 'Terms of service',
     }
     document.title = titles[pathname] ? `${titles[pathname]} | Homas Bakery` : 'Homas Bakery Admin'
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+    if (canonical && !pathname.startsWith('/admin')) {
+      canonical.href = new URL(pathname, 'https://www.homasbakery.com').href
+    }
     if (previousPath.current !== pathname) {
       document.getElementById('main-content')?.focus({ preventScroll: true })
       previousPath.current = pathname
