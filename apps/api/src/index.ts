@@ -62,8 +62,8 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-// Where the frontend lives. Defaults to local Vite. In production this
-// gets set to https://homasbakery.com via env var.
+// Where the frontend lives. Defaults to local Vite; set this to the deployed
+// frontend origin so browser requests pass the CORS check.
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const prisma = new PrismaClient();
 
@@ -132,11 +132,23 @@ app.use(
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.resolve(__dirname, '..', 'uploads');
+const FRONTEND_DIST_DIR = path.resolve(__dirname, '..', '..', 'web', 'dist');
 
 // Make uploaded product images publicly readable at /uploads/<filename>.
-// This is fine for dev. For production we'll move uploads to S3 + CloudFront
-// and remove this line.
+// On Render, this directory needs persistent or object storage to retain
+// uploads across deploys and restarts.
 app.use('/uploads', express.static(UPLOADS_DIR));
+
+const frontendDistExists = (await fs.access(FRONTEND_DIST_DIR).then(() => true).catch(() => false));
+if (frontendDistExists) {
+  app.use(express.static(FRONTEND_DIST_DIR));
+  app.get(/^(?!\/api\/)(?!\/uploads\/).*/, (req, res) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+      return res.status(404).end();
+    }
+    res.sendFile(path.join(FRONTEND_DIST_DIR, 'index.html'));
+  });
+}
 
 // CORS lets the browser send requests from the frontend origin to this API
 // origin. credentials: true is required for the session cookie to flow

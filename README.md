@@ -100,6 +100,40 @@ Current production architecture:
 - SSL/TLS is configured with ACM for the frontend and Certbot for the API.
 - GoDaddy DNS points the production domains to CloudFront and EC2.
 
+## Move to Render
+
+The root `render.yaml` defines one Node web service. It builds the frontend
+and API together, and the API serves the frontend on the same origin. It does
+not create a Postgres database, Key Value instance, or persistent disk. Create
+or keep those resources separately, in the same Render region as the web
+service, and set `DATABASE_URL` and `REDIS_URL` on the service. Product images
+are stored on the service filesystem and can be lost on redeploy or restart
+unless persistent storage or object storage is configured.
+
+### Fresh start without AWS
+
+1. Push this repository, including `render.yaml`, to GitHub. In Render, create
+  or update the Blueprint and review its one web service. Provision Postgres
+  and Key Value separately if they do not already exist. Set the service's
+  `DATABASE_URL` and `REDIS_URL` to the connection URLs for those Render
+  resources; use their internal URLs when connecting within the same region.
+2. Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` directly in Render. The
+  API applies Prisma migrations on startup. The Blueprint's seed hook runs
+  only after a service's first successful deploy. If this is an existing
+  service, run `cd apps/api && npx prisma db seed` once from its Render Shell
+  after the first deploy. Confirm the admin is ready in the logs, then remove
+  both `SEED_ADMIN_*` variables.
+3. Configure `RESEND_API_KEY` if order emails should send. Set `SENTRY_DSN`
+  and the frontend build variable `VITE_SENTRY_DSN` if error reporting is used.
+4. Sign in to the admin dashboard and add products and photos again. A fresh
+  database has no old products, orders, or admin accounts; those can only be
+  recovered from an AWS backup or another copy.
+5. Test the API health check, menu, image uploads, order submission, email,
+  and admin login. To use a custom domain, add it to the Render web service
+  and point its DNS record at the target shown in Render. Do not remove email
+  MX or TXT records. Set `FRONTEND_URL` to the actual site origin and leave
+  `VITE_API_URL` empty when the API and frontend share that origin.
+
 ## Project layout
 
 ```txt

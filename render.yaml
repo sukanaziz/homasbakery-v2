@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: homasbakery
+    runtime: node
+    plan: 0.5c-512mb
+    region: oregon
+    buildCommand: npm ci --include=dev && npx prisma generate --schema apps/api/prisma/schema.prisma && npm run build -w apps/web && npm run build -w apps/api
+    startCommand: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && npm run start -w apps/api
+    initialDeployHook: cd apps/api && npx prisma db seed
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://www.homasbakery.com
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: VITE_API_URL
+        value: ""
+
+# This Blueprint manages only the web service. Create or keep Render Postgres
+# and Key Value separately, then provide their connection URLs as env vars.
+# Uploaded files use the service filesystem and are not persistent without a disk.
