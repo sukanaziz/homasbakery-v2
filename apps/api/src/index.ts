@@ -160,6 +160,12 @@ if (frontendDistExists) {
 // gated by NODE_ENV !== 'production' so prod stays locked to known origins.
 const PRIVATE_LAN_ORIGIN = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$/;
 const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL;
+const ALLOWED_PRODUCTION_ORIGINS = new Set([
+  FRONTEND_URL,
+  RENDER_EXTERNAL_URL,
+  'https://homasbakery.com',
+  'https://www.homasbakery.com',
+].filter((origin): origin is string => Boolean(origin)));
 
 app.use(
   cors({
@@ -167,7 +173,7 @@ app.use(
       // Non-browser callers (curl, server-to-server) don't send an Origin
       // header. Let those through — CORS only applies to browsers anyway.
       if (!origin) return cb(null, true);
-      if (origin === FRONTEND_URL || origin === RENDER_EXTERNAL_URL) return cb(null, true);
+      if (ALLOWED_PRODUCTION_ORIGINS.has(origin)) return cb(null, true);
       if (process.env.NODE_ENV !== 'production' && PRIVATE_LAN_ORIGIN.test(origin)) {
         return cb(null, true);
       }
